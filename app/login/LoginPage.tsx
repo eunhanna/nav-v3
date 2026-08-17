@@ -3,9 +3,11 @@
 import Link from 'next/link'
 import { FormEvent, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { requestLoginCode, restoreSession, verifyLoginCode } from '@/lib/api'
+import { isApiConfigured, requestLoginCode, restoreSession, verifyLoginCode } from '@/lib/api'
 
 type LoginStep = 'email' | 'code'
+
+const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? ''
 
 export default function LoginPage() {
   const router = useRouter()
@@ -84,13 +86,15 @@ export default function LoginPage() {
   return (
     <main className="login-page">
       <header className="login-header">
-        <Link className="login-brand" href="/" aria-label="返回 EUNHANNA 首页"><img src="/eunhanna-logo.png" alt="EUNHANNA" /></Link>
+        <Link className="login-brand" href="/" aria-label="返回 EUNHANNA 首页"><img src={`${basePath}/eunhanna-logo.png`} alt="EUNHANNA" /></Link>
         <Link className="login-back" href="/"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6" /></svg>返回导航</Link>
       </header>
 
       <section className="login-stage" aria-labelledby="login-title">
         <div className={`login-orbit${step === 'code' ? ' is-connected' : ''}`} aria-hidden="true"><span className="login-orbit-line" /><span className="login-orbit-node">{step === 'code' ? '6' : ''}</span></div>
-        {checkingSession ? (
+        {!isApiConfigured ? (
+          <div className="login-card"><p className="login-eyebrow">LOCAL MODE</p><h1 id="login-title">登录服务暂未开放</h1><p className="login-copy">你仍可继续使用完整的导航功能；网站、分类和个性化设置会保存在当前浏览器。</p></div>
+        ) : checkingSession ? (
           <div className="login-card login-checking" role="status" aria-busy="true"><span className="login-spinner" aria-hidden="true" /><h1 id="login-title">正在连接你的轨道</h1><p>正在确认登录状态…</p></div>
         ) : step === 'email' ? (
           <form className="login-card" onSubmit={submitEmail} aria-busy={busy}>

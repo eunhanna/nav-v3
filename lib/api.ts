@@ -1,6 +1,8 @@
 'use client'
 
-const API_URL = (process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8080').replace(/\/$/, '')
+const API_URL = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, '') ?? ''
+
+export const isApiConfigured = API_URL.length > 0
 
 export interface AuthUser { id: string; email: string }
 export interface AuthSession { accessToken: string; user: AuthUser }
@@ -9,6 +11,7 @@ let accessToken = ''
 let restorePromise: Promise<AuthSession> | null = null
 
 async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
+  if (!isApiConfigured) throw new Error('api_not_configured')
   const response = await fetch(`${API_URL}/api/v1${path}`, {
     ...init,
     credentials: 'include',

@@ -1,10 +1,11 @@
 'use client'
 
 import { FormEvent, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import Link from 'next/link'
 import { AppState, Site, ThemeId, defaultState, searchEngines, themes } from '@/lib/constants'
 import { loadState, saveState } from '@/lib/storage'
 import { BackdropProfile, inspectSearchBackdrop } from '@/lib/search-backdrop'
-import { AuthUser, logout, restoreSession } from '@/lib/api'
+import { AuthUser, isApiConfigured, logout, restoreSession } from '@/lib/api'
 import { AlertDialog, Dialog, Drawer } from '@/components/ui/overlays'
 
 const wallpapers = [
@@ -13,6 +14,8 @@ const wallpapers = [
   'radial-gradient(circle at 78% 24%,rgba(209,104,66,.18),transparent 34%),radial-gradient(circle at 18% 78%,rgba(110,52,90,.18),transparent 35%)',
   'linear-gradient(transparent,transparent)',
 ]
+
+const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? ''
 
 function domain(url: string) { try { return new URL(url).hostname.replace('www.', '') } catch { return url } }
 function favicon(url: string) { return `https://www.google.com/s2/favicons?sz=128&domain_url=${encodeURIComponent(url)}` }
@@ -115,7 +118,7 @@ export default function Home() {
 
   return <div className="nova-app layout-reference" data-theme={state.theme} style={{ '--wallpaper': wallpapers[state.wallpaper] } as React.CSSProperties}>
     <header className="topbar">
-      <div className="brand" aria-label="EUNHANNA · Personal Navigator"><span className="brand-logo-frame" aria-hidden="true"><img className="brand-logo" src="/eunhanna-logo.png" alt="" /></span></div>
+      <div className="brand" aria-label="EUNHANNA · Personal Navigator"><span className="brand-logo-frame" aria-hidden="true"><img className="brand-logo" src={`${basePath}/eunhanna-logo.png`} alt="" /></span></div>
       <div className="top-actions"><button className="account-pill" onClick={() => setPanel('settings')} aria-label="打开个性化与账户设置"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-2.12 2.12-.06-.06a1.7 1.7 0 0 0-1.88-.34 1.7 1.7 0 0 0-1.03 1.56v.08h-3v-.08a1.7 1.7 0 0 0-1.03-1.56 1.7 1.7 0 0 0-1.88.34l-.06.06-2.12-2.12.06-.06A1.7 1.7 0 0 0 7 15a1.7 1.7 0 0 0-1.56-1.03h-.08v-3h.08A1.7 1.7 0 0 0 7 9.94a1.7 1.7 0 0 0-.34-1.88L6.6 8l2.12-2.12.06.06a1.7 1.7 0 0 0 1.88.34 1.7 1.7 0 0 0 1.03-1.56v-.08h3v.08a1.7 1.7 0 0 0 1.03 1.56 1.7 1.7 0 0 0 1.88-.34l.06-.06L19.8 8l-.06.06a1.7 1.7 0 0 0-.34 1.88 1.7 1.7 0 0 0 1.56 1.03h.08v3h-.08A1.7 1.7 0 0 0 19.4 15Z" /></svg><span className="account-pill-divider" aria-hidden="true" /><span className="account-pill-avatar" aria-hidden="true">{user?.email.slice(0, 1).toUpperCase() ?? '游'}</span></button></div>
     </header>
     <main>
@@ -160,7 +163,7 @@ function CategoryDialog({ open, onOpenChange, onAdd }: { open: boolean; onOpenCh
 
 function Settings({ open, state, user, patch, onOpenChange, onLogout, requestReset, notify }: { open: boolean; state: AppState; user: AuthUser | null; patch: (next: Partial<AppState>) => void; onOpenChange: (open: boolean) => void; onLogout: () => Promise<void>; requestReset: () => void; notify: (text: string) => void }) {
   const chooseTheme = (theme: ThemeId) => { patch({ theme }); notify(`已切换为${themes.find(item => item.id === theme)?.name}`) }
-  return <Drawer open={open} onOpenChange={onOpenChange} eyebrow="CONTROL" title="个性化" description="管理账户、主题、壁纸与界面设置。"><section><h3>账户与同步</h3><div className="profile-row"><span className="avatar">{user?.email.slice(0, 1).toUpperCase() ?? '游'}</span><div><strong>{user?.email ?? '访客模式'}</strong><small>{user ? '账户已连接，云同步将在下一阶段启用' : '自定义内容仅保存在当前浏览器'}</small></div>{user ? <button className="quiet" onClick={() => void onLogout()}>退出</button> : <a className="quiet profile-login-link" href="/login">登录</a>}</div></section><section><h3>配色主题</h3><div className="theme-list">{themes.map(theme => <button key={theme.id} className={state.theme === theme.id ? 'active' : ''} aria-pressed={state.theme === theme.id} onClick={() => chooseTheme(theme.id)}><i style={{ background: `linear-gradient(135deg,${theme.background} 0 68%,${theme.accent} 68%)` }} /><span>{theme.name}</span></button>)}</div></section><section><h3>壁纸氛围</h3><div className="wall-list">{wallpapers.map((wallpaper, index) => <button key={index} className={state.wallpaper === index ? 'active' : ''} aria-label={`使用壁纸 ${index + 1}`} aria-pressed={state.wallpaper === index} style={{ background: wallpaper }} onClick={() => patch({ wallpaper: index })} />)}</div></section><section><h3>界面</h3><Switch label="编辑轨道" hint="显示新增、分类与删除操作" checked={state.settings.editing} onClick={() => patch({ settings: { ...state.settings, editing: !state.settings.editing } })} /><Switch label="显示秒数" hint="在时间旁显示秒钟" checked={state.settings.seconds} onClick={() => patch({ settings: { ...state.settings, seconds: !state.settings.seconds } })} /><Switch label="显示问候" hint="根据时间更新首页问候" checked={state.settings.greeting} onClick={() => patch({ settings: { ...state.settings, greeting: !state.settings.greeting } })} /></section><section><button className="quiet danger" onClick={requestReset}>恢复默认内容</button></section></Drawer>
+  return <Drawer open={open} onOpenChange={onOpenChange} eyebrow="CONTROL" title="个性化" description="管理账户、主题、壁纸与界面设置。"><section><h3>账户与同步</h3><div className="profile-row"><span className="avatar">{user?.email.slice(0, 1).toUpperCase() ?? '游'}</span><div><strong>{user?.email ?? '访客模式'}</strong><small>{user ? '账户已连接，云同步将在下一阶段启用' : isApiConfigured ? '自定义内容仅保存在当前浏览器' : '登录服务暂未开放，内容保存在当前浏览器'}</small></div>{user ? <button className="quiet" onClick={() => void onLogout()}>退出</button> : isApiConfigured ? <Link className="quiet profile-login-link" href="/login">登录</Link> : null}</div></section><section><h3>配色主题</h3><div className="theme-list">{themes.map(theme => <button key={theme.id} className={state.theme === theme.id ? 'active' : ''} aria-pressed={state.theme === theme.id} onClick={() => chooseTheme(theme.id)}><i style={{ background: `linear-gradient(135deg,${theme.background} 0 68%,${theme.accent} 68%)` }} /><span>{theme.name}</span></button>)}</div></section><section><h3>壁纸氛围</h3><div className="wall-list">{wallpapers.map((wallpaper, index) => <button key={index} className={state.wallpaper === index ? 'active' : ''} aria-label={`使用壁纸 ${index + 1}`} aria-pressed={state.wallpaper === index} style={{ background: wallpaper }} onClick={() => patch({ wallpaper: index })} />)}</div></section><section><h3>界面</h3><Switch label="编辑轨道" hint="显示新增、分类与删除操作" checked={state.settings.editing} onClick={() => patch({ settings: { ...state.settings, editing: !state.settings.editing } })} /><Switch label="显示秒数" hint="在时间旁显示秒钟" checked={state.settings.seconds} onClick={() => patch({ settings: { ...state.settings, seconds: !state.settings.seconds } })} /><Switch label="显示问候" hint="根据时间更新首页问候" checked={state.settings.greeting} onClick={() => patch({ settings: { ...state.settings, greeting: !state.settings.greeting } })} /></section><section><button className="quiet danger" onClick={requestReset}>恢复默认内容</button></section></Drawer>
 }
 
 function Switch({ label, hint, checked, onClick }: { label: string; hint: string; checked: boolean; onClick: () => void }) { return <div className="setting-row"><span>{label}<small>{hint}</small></span><button className="switch" role="switch" aria-checked={checked} onClick={onClick} aria-label={label} /></div> }
