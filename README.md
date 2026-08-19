@@ -38,6 +38,12 @@ pnpm build
 NEXT_PUBLIC_API_URL=http://localhost:8080
 ```
 
+线上后端服务地址为：
+
+```bash
+NEXT_PUBLIC_API_URL=https://api.eunhacc.cyou
+```
+
 ## 项目结构
 
 ```

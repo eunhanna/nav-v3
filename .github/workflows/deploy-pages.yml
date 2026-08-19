@@ -41,7 +41,7 @@ jobs:
         env:
           PAGES_BASE_PATH: /nav-v3
           NEXT_PUBLIC_BASE_PATH: /nav-v3
-          NEXT_PUBLIC_API_URL: ${{ vars.NEXT_PUBLIC_API_URL }}
+          NEXT_PUBLIC_API_URL: https://api.eunhacc.cyou
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v4
