@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-labelledby="t d">
+  <title id="t">EUNHANNA concept B - Converge</title><desc id="d">Three rounded navigation paths converging toward a destination node.</desc>
+  <path fill="none" stroke="#3B82F6" stroke-width="27" stroke-linecap="round" stroke-linejoin="round" d="M48 61h62c26 0 32 21 52 39M48 128h80M48 195h62c26 0 32-21 52-39"/>
+  <circle cx="187" cy="128" r="28" fill="#3B82F6"/><circle cx="187" cy="128" r="10" fill="#fff"/>
+</svg>

@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 680 180" role="img" aria-labelledby="title desc">
+  <title id="title">Euno</title><desc id="desc">Euno horizontal lockup with gradient portal mark and custom geometric wordmark.</desc>
+  <defs><linearGradient id="euno-gradient" x1="12" y1="15" x2="132" y2="150" gradientUnits="userSpaceOnUse"><stop stop-color="#2563EB"/><stop offset="1" stop-color="#7C5CFF"/></linearGradient></defs>
+  <g transform="translate(10 10) scale(.625)"><rect width="256" height="256" rx="56" fill="url(#euno-gradient)"/><path d="M74 57h97a28 28 0 0 1 28 28v86a28 28 0 0 1-28 28H74a17 17 0 0 1-17-17V74a17 17 0 0 1 17-17Z" fill="#fff"/><path d="M91 84v88M91 84h75M91 128h54M91 172h75" fill="none" stroke="#2563EB" stroke-width="20" stroke-linecap="round" stroke-linejoin="round"/></g>
+  <g transform="translate(200 50)" fill="none" stroke="#111827" stroke-width="15" stroke-linecap="round" stroke-linejoin="round"><path d="M0 0v80M0 0h48M0 40h38M0 80h48"/><path d="M81 22v35c0 31 49 31 49 0V22M130 22v58"/><path d="M164 80V22c0-28 48-28 48 0v58M164 40c0-24 48-24 48 0"/><path d="M291 51c0 39-58 39-58 0s58-39 58 0Z"/></g>
+</svg>

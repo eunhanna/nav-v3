@@ -11,18 +11,18 @@ nav-v3 当前只有认证请求会访问 nav-api；站点、分类、搜索引�
 
 已经调用且 nav-api 已实现的接口：
 
-| 方法 | 路径 | 用途 |
-| --- | --- | --- |
-| POST | `/api/v1/auth/code/request` | 申请 6 位邮箱登录验证码 |
-| POST | `/api/v1/auth/code/verify` | 验证登录码并取得会话 |
-| POST | `/api/v1/auth/refresh` | 用 HttpOnly Refresh Cookie 恢复会话 |
-| POST | `/api/v1/auth/logout` | 注销会话 |
+| 方法 | 路径                        | 用途                                |
+| ---- | --------------------------- | ----------------------------------- |
+| POST | `/api/v1/auth/code/request` | 申请 6 位邮箱登录验证码             |
+| POST | `/api/v1/auth/code/verify`  | 验证登录码并取得会话                |
+| POST | `/api/v1/auth/refresh`      | 用 HttpOnly Refresh Cookie 恢复会话 |
+| POST | `/api/v1/auth/logout`       | 注销会话                            |
 
 nav-api 已实现但 nav-v3 暂未调用：
 
-| 方法 | 路径 | 用途 |
-| --- | --- | --- |
-| GET | `/api/v1/me` | 校验 Access Token 并取得当前用户 |
+| 方法 | 路径         | 用途                             |
+| ---- | ------------ | -------------------------------- |
+| GET  | `/api/v1/me` | 校验 Access Token 并取得当前用户 |
 
 本期新增需求只有“用户导航文档同步”。搜索跳转、favicon、时钟和壁纸采样均在客户端完成，不需要后端接口。
 
@@ -145,13 +145,13 @@ nav-v3 收到冲突后必须停止自动覆盖，先基于 `current` 合并或�
 
 ## 4. 通用响应
 
-| 状态码 | error | 含义 |
-| --- | --- | --- |
-| 400 | `invalid_request` | JSON、字段或引用关系不合法 |
-| 401 | `invalid_access_token` | 缺少、失效或错误的 Access Token |
-| 409 | `version_conflict` | 乐观锁版本冲突 |
-| 413 | `document_too_large` | 文档超过 2 MiB |
-| 500 | `internal_server_error` | 未预期服务端错误 |
+| 状态码 | error                   | 含义                            |
+| ------ | ----------------------- | ------------------------------- |
+| 400    | `invalid_request`       | JSON、字段或引用关系不合法      |
+| 401    | `invalid_access_token`  | 缺少、失效或错误的 Access Token |
+| 409    | `version_conflict`      | 乐观锁版本冲突                  |
+| 413    | `document_too_large`    | 文档超过 2 MiB                  |
+| 500    | `internal_server_error` | 未预期服务端错误                |
 
 认证后的请求都使用 Bearer Access Token。若返回 `401`，nav-v3 先调用一次 `/auth/refresh`，成功后只重试原请求一次。
 
@@ -182,3 +182,18 @@ nav-v3 收到冲突后必须停止自动覆盖，先基于 `current` 合并或�
 3. nav-v3：将本地 `AppState` 升级为 UUID/分类对象模型，增加本地到 schema v1 的一次性迁移。
 4. nav-v3：登录后执行首次同步，并用防抖保存替代纯 localStorage 保存。
 5. 两边：接入契约校验、breaking-change 检查和契约版本升级流程。
+
+## 8. 公共入口与管理员后台
+
+`AuthUser` 需要增加 `role` 字段，取值为 `user` 或 `admin`。管理员接口必须在服务端校验角色，前端路由保护不能作为权限边界。
+
+| 方法   | 路径                          | 用途                         |
+| ------ | ----------------------------- | ---------------------------- |
+| GET    | `/api/v1/public/sites`        | 首页读取已启用的公共网站入口 |
+| GET    | `/api/v1/admin/sites`         | 管理员读取全部网站入口       |
+| POST   | `/api/v1/admin/sites`         | 管理员新增网站入口           |
+| PATCH  | `/api/v1/admin/sites/:id`     | 管理员编辑网站入口           |
+| DELETE | `/api/v1/admin/sites/:id`     | 管理员删除网站入口           |
+| PUT    | `/api/v1/admin/sites/reorder` | 管理员保存网站排序           |
+
+管理员接口返回 `403` 表示已登录但不是管理员；公共接口不要求登录。网站实体包含 `id`、`name`、`url`、`category`、`iconUrl`、`fallbackIcon`、`enabled`、`position`、`createdAt` 和 `updatedAt`。

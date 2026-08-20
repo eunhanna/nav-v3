@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-labelledby="title desc">
+  <title id="title">Euno concept 04 — Continuous Path</title><desc id="desc">One continuous rounded route travels through three thresholds and returns as an implied E.</desc>
+  <rect width="256" height="256" rx="56" fill="#111827"/>
+  <path d="M177 70H94a24 24 0 0 0-24 24v68a24 24 0 0 0 24 24h83M70 128h79" fill="none" stroke="#fff" stroke-width="24" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="177" cy="70" r="12" fill="#fff"/>
+</svg>

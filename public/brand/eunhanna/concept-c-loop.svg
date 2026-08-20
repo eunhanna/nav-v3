@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-labelledby="t d">
+  <title id="t">EUNHANNA concept C - Loop</title><desc id="d">A continuous rounded loop suggesting an E-shaped navigation route.</desc>
+  <path fill="none" stroke="#3B82F6" stroke-width="27" stroke-linecap="round" stroke-linejoin="round" d="M177 62H95c-30 0-50 25-50 66s20 66 50 66h82M76 128h82"/>
+  <circle cx="181" cy="128" r="24" fill="#3B82F6"/><circle cx="181" cy="128" r="8" fill="#fff"/>
+</svg>

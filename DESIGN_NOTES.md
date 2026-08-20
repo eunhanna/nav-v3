@@ -29,12 +29,14 @@ RISK      no card backgrounds — icons float on gradient background,
 ## Self-Simulation Check
 
 Generic dark nav page would have:
+
 - ✗ colored icon backgrounds (each site gets a vibrant color) — ELIMINATED
 - ✗ blue-purple gradient accent — REPLACED with single blue-500
 - ✗ overly decorative glass effects — REDUCED to subtle border
 - ✗ cluttered elements around the clock — CLOCK given dominant space
 
 Changes made:
+
 1. Removed per-site color backgrounds → icons float on gradient
 2. Replaced accent #646cff with #3b82f6 — better contrast, less "startup blue"
 3. Clock given 140px size, weight 200, -0.04em tracking — becomes the hero

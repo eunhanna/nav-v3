@@ -98,7 +98,10 @@ const config: Config = {
         'label-caps': ['Geist', 'system-ui', '-apple-system', 'sans-serif'],
       },
       fontSize: {
-        'display-clock': ['80px', { lineHeight: '96px', letterSpacing: '-0.02em', fontWeight: '300' }],
+        'display-clock': [
+          '80px',
+          { lineHeight: '96px', letterSpacing: '-0.02em', fontWeight: '300' },
+        ],
         'display-clock-mobile': ['56px', { lineHeight: '64px', fontWeight: '300' }],
         'body-lg': ['18px', { lineHeight: '28px', fontWeight: '400' }],
         'body-sm': ['14px', { lineHeight: '20px', fontWeight: '400' }],

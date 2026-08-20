@@ -26,7 +26,8 @@ function profilePixels(data: Uint8ClampedArray): BackdropProfile {
   const count = data.length / 4
 
   for (let index = 0; index < data.length; index += 4) {
-    const luminance = (0.2126 * data[index] + 0.7152 * data[index + 1] + 0.0722 * data[index + 2]) / 255
+    const luminance =
+      (0.2126 * data[index] + 0.7152 * data[index + 1] + 0.0722 * data[index + 2]) / 255
     luminanceTotal += luminance
     luminanceSquaredTotal += luminance * luminance
   }
@@ -58,11 +59,24 @@ async function inspectImage(searchBox: HTMLElement, source: string): Promise<Bac
   canvas.height = 8
   const context = canvas.getContext('2d', { willReadFrequently: true })
   if (!context || sourceWidth <= 0 || sourceHeight <= 0) return FALLBACK_PROFILE
-  context.drawImage(image, sourceX, sourceY, sourceWidth, sourceHeight, 0, 0, canvas.width, canvas.height)
+  context.drawImage(
+    image,
+    sourceX,
+    sourceY,
+    sourceWidth,
+    sourceHeight,
+    0,
+    0,
+    canvas.width,
+    canvas.height,
+  )
   return profilePixels(context.getImageData(0, 0, canvas.width, canvas.height).data)
 }
 
-export async function inspectSearchBackdrop(searchBox: HTMLElement, background: string): Promise<BackdropProfile> {
+export async function inspectSearchBackdrop(
+  searchBox: HTMLElement,
+  background: string,
+): Promise<BackdropProfile> {
   const imageUrl = extractImageUrl(background)
   if (imageUrl) {
     try {

@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-labelledby="title desc">
+  <title id="title">Euno concept 06 — E plus Connection</title><desc id="desc">Three independent routes meet a single shared gateway, quietly revealing an E.</desc>
+  <rect width="256" height="256" rx="56" fill="#111827"/>
+  <path d="M77 73h61l35 55-35 55H77M77 128h96" fill="none" stroke="#fff" stroke-width="22" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="180" cy="128" r="13" fill="#fff"/>
+</svg>

@@ -1,0 +1,16 @@
+node_modules/
+.next/
+out/
+output/
+.pnpm-store/
+coverage/
+dist/
+build/
+*.tsbuildinfo
+public/brand/
+public/fonts/
+static/
+stitch-design.html
+*.svg
+*.png
+*.woff2

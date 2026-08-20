@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-labelledby="title desc">
+  <title id="title">Euno</title><desc id="desc">Euno negative-space portal mark.</desc>
+  <defs><linearGradient id="euno-gradient" x1="35" y1="28" x2="219" y2="231" gradientUnits="userSpaceOnUse"><stop stop-color="#2563EB"/><stop offset="1" stop-color="#7C5CFF"/></linearGradient></defs>
+  <rect width="256" height="256" rx="56" fill="url(#euno-gradient)"/>
+  <path d="M74 57h97a28 28 0 0 1 28 28v86a28 28 0 0 1-28 28H74a17 17 0 0 1-17-17V74a17 17 0 0 1 17-17Z" fill="#fff"/>
+  <path d="M91 84v88M91 84h75M91 128h54M91 172h75" fill="none" stroke="#2563EB" stroke-width="20" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

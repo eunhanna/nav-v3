@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-labelledby="title desc">
+  <title id="title">Euno concept 02 — Portal</title><desc id="desc">A rounded doorway and three open thresholds suggest entry into a personal web space.</desc>
+  <rect width="256" height="256" rx="56" fill="#111827"/>
+  <path d="M174 64H102a38 38 0 0 0-38 38v52a38 38 0 0 0 38 38h72M101 104h60M101 152h60" fill="none" stroke="#fff" stroke-width="24" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
