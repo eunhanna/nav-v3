@@ -1,6 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-labelledby="t d">
-  <title id="t">EUNHANNA concept A - Orbit</title><desc id="d">Rounded orbit enclosure with an implied E and destination node.</desc>
-  <path fill="#3B82F6" d="M128 16c64 0 112 48 112 112s-48 112-112 112S16 192 16 128 64 16 128 16Z"/>
-  <path fill="none" stroke="#fff" stroke-width="22" stroke-linecap="round" d="M75 78h75M75 128h53M75 178h75"/>
-  <circle cx="174" cy="128" r="17" fill="#fff"/>
-</svg>

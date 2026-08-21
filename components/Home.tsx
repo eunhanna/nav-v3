@@ -19,7 +19,7 @@ import {
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import Link from 'next/link'
-import { FormEvent, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { FormEvent, useEffect, useMemo, useRef, useState } from 'react'
 
 import { AlertDialog, Dialog, Drawer } from '@/components/ui/overlays'
 import { AuthUser, getPublicSites, isApiConfigured, logout, restoreSession } from '@/lib/api'
@@ -57,18 +57,66 @@ function favicon(url: string) {
   return `https://www.google.com/s2/favicons?sz=128&domain_url=${encodeURIComponent(url)}`
 }
 function siteIconSources(url: string, iconUrl?: string) {
-  const host = domain(url)
-  return [iconUrl, `https://logo.clearbit.com/${encodeURIComponent(host)}`, favicon(url)].filter(
-    (source): source is string => Boolean(source),
-  )
+  return [iconUrl, favicon(url)].filter((source): source is string => Boolean(source))
 }
 
-function compactDate(date: Date) {
+// 分类切换会卸载不可见卡片；记住已经确认可用的来源，避免再次走失败回退链。
+const iconSourceIndices = new Map<string, number>()
+
+const lunarDayNames = [
+  '初一',
+  '初二',
+  '初三',
+  '初四',
+  '初五',
+  '初六',
+  '初七',
+  '初八',
+  '初九',
+  '初十',
+  '十一',
+  '十二',
+  '十三',
+  '十四',
+  '十五',
+  '十六',
+  '十七',
+  '十八',
+  '十九',
+  '二十',
+  '廿一',
+  '廿二',
+  '廿三',
+  '廿四',
+  '廿五',
+  '廿六',
+  '廿七',
+  '廿八',
+  '廿九',
+  '三十',
+]
+
+function lunarDate(date: Date) {
+  const parts = new Intl.DateTimeFormat('zh-CN-u-ca-chinese', {
+    month: 'long',
+    day: 'numeric',
+  }).formatToParts(date)
+  const month = parts.find((part) => part.type === 'month')?.value
+  const day = Number(parts.find((part) => part.type === 'day')?.value)
+  return month && lunarDayNames[day - 1] ? `${month}${lunarDayNames[day - 1]}` : ''
+}
+
+function compactDate(date: Date, includeLunarDate: boolean) {
   const weekday = new Intl.DateTimeFormat('zh-CN', { weekday: 'short' }).format(date)
-  return `${date.getMonth() + 1}月${date.getDate()}日 · ${weekday}`
+  const solarDate = `${date.getMonth() + 1}月${date.getDate()}日 · ${weekday}`
+  const lunar = includeLunarDate ? lunarDate(date) : ''
+  return lunar ? `${solarDate} · 农历${lunar}` : solarDate
 }
 
 type ResetTarget = 'settings' | 'sites'
+type GridSlideDirection = 'next' | 'previous'
+type GridTransition = { from: string; to: string; direction: GridSlideDirection }
+const SKELETON_SITE_COUNT = 12
 
 function Favicon({
   url,
@@ -84,7 +132,11 @@ function Favicon({
   iconUrl?: string
 }) {
   const sources = variant === 'site' ? siteIconSources(url, iconUrl) : [favicon(url)]
-  const [sourceIndex, setSourceIndex] = useState(0)
+  const sourceKey = `${variant}\u0000${url}\u0000${iconUrl ?? ''}`
+  const [sourceIndex, setSourceIndex] = useState(() => iconSourceIndices.get(sourceKey) ?? 0)
+  useEffect(() => {
+    setSourceIndex(iconSourceIndices.get(sourceKey) ?? 0)
+  }, [sourceKey])
   const failed = sourceIndex >= sources.length
   if (failed) return <span className={`${className} favicon-fallback`}>{fallback}</span>
   return (
@@ -92,7 +144,16 @@ function Favicon({
       className={className}
       src={sources[sourceIndex]}
       alt=""
-      onError={() => setSourceIndex((index) => index + 1)}
+      loading="lazy"
+      decoding="async"
+      onLoad={() => iconSourceIndices.set(sourceKey, sourceIndex)}
+      onError={() =>
+        setSourceIndex((index) => {
+          const nextIndex = index + 1
+          iconSourceIndices.set(sourceKey, nextIndex)
+          return nextIndex
+        })
+      }
     />
   )
 }
@@ -157,10 +218,24 @@ function SortableSite({
   )
 }
 
+function SitePreview({ site }: { site: Site }) {
+  return (
+    <article className="site-card" style={{ '--site-color': site.color } as React.CSSProperties}>
+      <a href={site.url} title={`打开 ${site.name}`} tabIndex={-1}>
+        <span className="site-icon">
+          <Favicon variant="site" url={site.url} iconUrl={site.iconUrl} fallback={site.icon} />
+        </span>
+        <strong>{site.name}</strong>
+        <small>{domain(site.url)}</small>
+      </a>
+    </article>
+  )
+}
+
 export default function Home() {
   const [state, setState] = useState<AppState>(defaultState)
   const [mounted, setMounted] = useState(false)
-  const [usingPublicSites] = useState(true)
+  const [sitesReady, setSitesReady] = useState(false)
   const [query, setQuery] = useState('')
   const [now, setNow] = useState(new Date())
   const [panel, setPanel] = useState<'site' | 'category' | 'settings' | null>(null)
@@ -170,10 +245,12 @@ export default function Home() {
   const [resetTarget, setResetTarget] = useState<ResetTarget | null>(null)
   const searchBoxRef = useRef<HTMLDivElement>(null)
   const enginePickerRef = useRef<HTMLDetailsElement>(null)
-  const tabsRef = useRef<HTMLElement>(null)
+  const workspaceRef = useRef<HTMLElement>(null)
   const draggedSiteRef = useRef<number | null>(null)
   const dragClickResetRef = useRef<number | null>(null)
-  const [tabIndicator, setTabIndicator] = useState({ left: 0, width: 0, ready: false })
+  const gridTransitionTimerRef = useRef<number | null>(null)
+  const [renderedCategory, setRenderedCategory] = useState(defaultState.activeCategory)
+  const [gridTransition, setGridTransition] = useState<GridTransition | null>(null)
   const sensors = useSensors(
     useSensor(MouseSensor, { activationConstraint: { distance: 6 } }),
     useSensor(TouchSensor, { activationConstraint: { delay: 180, tolerance: 8 } }),
@@ -185,10 +262,15 @@ export default function Home() {
     setMounted(true)
     const loadCachedPublicSites = () => {
       const cached = loadPublicSitesCache()
-      if (cached) setState((current) => ({ ...current, sites: cached }))
+      if (!cached) return false
+      setState((current) => ({ ...current, sites: cached }))
+      return true
     }
+    // 缓存先绘制，网络刷新只替换较新的后台数据，避免慢 API 阻塞首屏。
+    const hasCachedSites = loadCachedPublicSites()
+    if (hasCachedSites) setSitesReady(true)
     if (!isApiConfigured) {
-      loadCachedPublicSites()
+      setSitesReady(true)
       return
     }
     getPublicSites()
@@ -209,6 +291,7 @@ export default function Home() {
         savePublicSitesCache(sites)
       })
       .catch(loadCachedPublicSites)
+      .finally(() => setSitesReady(true))
   }, [])
   useEffect(() => {
     restoreSession()
@@ -227,6 +310,8 @@ export default function Home() {
   useEffect(
     () => () => {
       if (dragClickResetRef.current !== null) window.clearTimeout(dragClickResetRef.current)
+      if (gridTransitionTimerRef.current !== null)
+        window.clearTimeout(gridTransitionTimerRef.current)
     },
     [],
   )
@@ -256,33 +341,30 @@ export default function Home() {
       state.theme === 'light' ? 'light' : state.theme === 'dark' ? 'dark' : 'light dark'
     document.documentElement.dataset.theme = state.theme
   }, [state.theme])
-  useLayoutEffect(() => {
-    const tabs = tabsRef.current
-    if (!tabs) return
-
-    const updateIndicator = () => {
-      const activeTab = tabs.querySelector<HTMLElement>('[aria-pressed="true"]')
-      if (!activeTab) return
-      const indicatorWidth = Math.min(44, activeTab.offsetWidth)
-      setTabIndicator({
-        left: activeTab.offsetLeft + (activeTab.offsetWidth - indicatorWidth) / 2,
-        width: indicatorWidth,
-        ready: true,
-      })
-    }
-
-    updateIndicator()
-    const observer = new ResizeObserver(updateIndicator)
-    observer.observe(tabs)
-    return () => observer.disconnect()
-  }, [state.activeCategory, state.categories])
-
+  useEffect(() => {
+    if (!gridTransition && renderedCategory !== state.activeCategory)
+      setRenderedCategory(state.activeCategory)
+  }, [gridTransition, renderedCategory, state.activeCategory])
   const visibleSites = useMemo(
     () =>
       state.activeCategory === '全部'
         ? state.sites
         : state.sites.filter((site) => site.category === state.activeCategory),
     [state],
+  )
+  const renderedSites = useMemo(
+    () =>
+      renderedCategory === '全部'
+        ? state.sites
+        : state.sites.filter((site) => site.category === renderedCategory),
+    [renderedCategory, state.sites],
+  )
+  const transitionFromSites = useMemo(
+    () =>
+      gridTransition?.from === '全部'
+        ? state.sites
+        : state.sites.filter((site) => site.category === gridTransition?.from),
+    [gridTransition, state.sites],
   )
   const engine = searchEngines.find((item) => item.name === state.engine) ?? searchEngines[0]
   const hour = now.getHours()
@@ -296,10 +378,35 @@ export default function Home() {
           : '晚上好，收束一天的轨迹。'
   const period = hour < 6 ? 'NIGHT' : hour < 12 ? 'MORNING' : hour < 18 ? 'AFTERNOON' : 'EVENING'
   const time = `${String(hour).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}${state.settings.seconds ? `:${String(now.getSeconds()).padStart(2, '0')}` : ''}`
-  const dateLabel = compactDate(now)
+  const dateLabel = compactDate(now, state.settings.lunarDate)
 
   function patch(next: Partial<AppState>) {
     setState((current) => ({ ...current, ...next }))
+  }
+  function selectCategory(category: string) {
+    if (category === renderedCategory || gridTransition) return
+    const workspace = workspaceRef.current
+    if (workspace) {
+      const workspaceTop = workspace.getBoundingClientRect().top + window.scrollY
+      const stableScrollTop = Math.max(0, workspaceTop - 12)
+      if (window.scrollY > stableScrollTop + 1)
+        window.scrollTo({ top: stableScrollTop, behavior: 'auto' })
+    }
+    const categories = ['全部', ...state.categories]
+    if (!sitesReady) {
+      setRenderedCategory(category)
+      patch({ activeCategory: category })
+      return
+    }
+    const direction: GridSlideDirection =
+      categories.indexOf(category) > categories.indexOf(renderedCategory) ? 'next' : 'previous'
+    setGridTransition({ from: renderedCategory, to: category, direction })
+    patch({ activeCategory: category })
+    gridTransitionTimerRef.current = window.setTimeout(() => {
+      setRenderedCategory(category)
+      setGridTransition(null)
+      gridTransitionTimerRef.current = null
+    }, 240)
   }
   function notify(message: string) {
     setToast(message)
@@ -391,6 +498,7 @@ export default function Home() {
       className="nova-app layout-reference"
       data-theme={state.theme}
       data-wallpaper={state.wallpaper}
+      data-compact-mode={state.settings.compactMode}
       style={
         {
           '--wallpaper': wallpapers[state.wallpaper]?.background ?? wallpapers[3].background,
@@ -492,83 +600,95 @@ export default function Home() {
             </button>
           </div>
         </form>
-        <section className="workspace" aria-labelledby="orbit-title">
-          <div className="section-head">
-            <div>
-              <h2 id="orbit-title">你的轨道</h2>
-              <p>{state.sites.length} 个停靠点 · 公共入口由后台管理</p>
-            </div>
-            {state.settings.editing && !usingPublicSites && (
-              <div>
-                <button className="quiet" onClick={() => setPanel('category')}>
-                  新建分类
+        {!state.settings.compactMode && (
+          <section ref={workspaceRef} className="workspace" aria-label="网站快捷入口">
+            <nav className="tabs" aria-label="筛选网站分类">
+              {['全部', ...state.categories].map((category) => (
+                <button
+                  type="button"
+                  key={category}
+                  className={state.activeCategory === category ? 'active' : ''}
+                  aria-pressed={state.activeCategory === category}
+                  onClick={() => selectCategory(category)}
+                >
+                  {category}
                 </button>
-                <button className="primary" onClick={() => setPanel('site')}>
-                  ＋ 添加网站
-                </button>
-              </div>
-            )}
-          </div>
-          <nav ref={tabsRef} className="tabs" aria-label="筛选网站分类">
-            {['全部', ...state.categories].map((category) => (
-              <button
-                type="button"
-                key={category}
-                className={state.activeCategory === category ? 'active' : ''}
-                aria-pressed={state.activeCategory === category}
-                onClick={() => patch({ activeCategory: category })}
-              >
-                {category}
-              </button>
-            ))}
-            <span
-              className={`tab-indicator${tabIndicator.ready ? ' ready' : ''}`}
-              aria-hidden="true"
-              style={{ width: tabIndicator.width, transform: `translateX(${tabIndicator.left}px)` }}
-            />
-          </nav>
-          <DndContext
-            sensors={sensors}
-            collisionDetection={closestCenter}
-            onDragStart={({ active }) => {
-              draggedSiteRef.current = Number(active.id)
-            }}
-            onDragEnd={reorderSites}
-            onDragCancel={() => {
-              draggedSiteRef.current = null
-              if (dragClickResetRef.current !== null) window.clearTimeout(dragClickResetRef.current)
-              dragClickResetRef.current = null
-            }}
-            accessibility={{
-              announcements: sortableAnnouncements,
-              screenReaderInstructions: {
-                draggable:
-                  '按空格键拾取网站，使用方向键调整位置，再按空格键放下；按 Escape 键取消。',
-              },
-            }}
-          >
-            <SortableContext
-              items={visibleSites.map((site) => site.id)}
-              strategy={rectSortingStrategy}
+              ))}
+            </nav>
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragStart={({ active }) => {
+                draggedSiteRef.current = Number(active.id)
+              }}
+              onDragEnd={reorderSites}
+              onDragCancel={() => {
+                draggedSiteRef.current = null
+                if (dragClickResetRef.current !== null)
+                  window.clearTimeout(dragClickResetRef.current)
+                dragClickResetRef.current = null
+              }}
+              accessibility={{
+                announcements: sortableAnnouncements,
+                screenReaderInstructions: {
+                  draggable:
+                    '按空格键拾取网站，使用方向键调整位置，再按空格键放下；按 Escape 键取消。',
+                },
+              }}
             >
-              <div className="site-grid">
-                {visibleSites.length ? (
-                  visibleSites.map((site) => (
-                    <SortableSite
-                      key={site.id}
-                      site={site}
-                      editing={state.settings.editing}
-                      onDelete={setSiteToDelete}
-                      suppressNavigation={suppressDraggedSiteNavigation}
-                    />
-                  ))
-                ) : (
-                  <div className="empty">这条轨道还没有停靠点。选择“添加网站”开始。</div>
-                )}
-              </div>
-            </SortableContext>
-          </DndContext>
-        </section>
+              <SortableContext
+                items={gridTransition ? [] : renderedSites.map((site) => site.id)}
+                strategy={rectSortingStrategy}
+              >
+                <div className="site-grid-viewport" aria-busy={!sitesReady}>
+                  {!sitesReady ? (
+                    <div className="site-grid">
+                      {Array.from({ length: SKELETON_SITE_COUNT }, (_, index) => (
+                        <div
+                          className="site-card site-card-skeleton"
+                          aria-hidden="true"
+                          key={index}
+                        >
+                          <span className="site-skeleton-icon" />
+                          <span className="site-skeleton-label" />
+                        </div>
+                      ))}
+                    </div>
+                  ) : gridTransition ? (
+                    <>
+                      <div
+                        className={`site-grid site-grid-page site-grid-page-out site-grid-page-out-${gridTransition.direction}`}
+                      >
+                        {transitionFromSites.map((site) => (
+                          <SitePreview key={site.id} site={site} />
+                        ))}
+                      </div>
+                      <div
+                        className={`site-grid site-grid-page site-grid-page-in site-grid-page-in-${gridTransition.direction}`}
+                      >
+                        {visibleSites.map((site) => (
+                          <SitePreview key={site.id} site={site} />
+                        ))}
+                      </div>
+                    </>
+                  ) : (
+                    <div className="site-grid">
+                      {renderedSites.map((site) => (
+                        <SortableSite
+                          key={site.id}
+                          site={site}
+                          editing={state.settings.editing}
+                          onDelete={setSiteToDelete}
+                          suppressNavigation={suppressDraggedSiteNavigation}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </SortableContext>
+            </DndContext>
+          </section>
+        )}
       </main>
       <SiteDialog
         open={panel === 'site'}
@@ -613,7 +733,7 @@ export default function Home() {
           if (!open) setSiteToDelete(null)
         }}
         title="删除网站？"
-        description={siteToDelete ? `“${siteToDelete.name}”将从你的轨道中移除。` : ''}
+        description={siteToDelete ? `“${siteToDelete.name}”将从快捷入口中移除。` : ''}
         confirmLabel="删除网站"
         onConfirm={() => {
           if (siteToDelete) deleteSite(siteToDelete.id)
@@ -679,7 +799,7 @@ function SiteDialog({
       onOpenChange={onOpenChange}
       eyebrow="NEW STOP"
       title="添加网站"
-      description="填写网站信息并添加到你的轨道。"
+      description="填写网站信息并添加到快捷入口。"
     >
       <form
         onSubmit={(event) => {
@@ -882,7 +1002,6 @@ function Settings({
             {activeSection === 'account' && (
               <section className="settings-panel-section">
                 <h3>账户与同步</h3>
-                <p className="settings-panel-intro">管理当前设备上的账户连接与同步状态。</p>
                 <div className="profile-row">
                   <span className="avatar">{user?.email.slice(0, 1).toUpperCase() ?? '游'}</span>
                   <div>
@@ -911,7 +1030,6 @@ function Settings({
               <div className="settings-panel-stack">
                 <section className="settings-panel-section">
                   <h3>配色主题</h3>
-                  <p className="settings-panel-intro">选择适合当前环境的界面配色。</p>
                   <div className="theme-list">
                     {themes.map((theme) => (
                       <button
@@ -932,9 +1050,6 @@ function Settings({
                 </section>
                 <section className="settings-panel-section">
                   <h3>壁纸氛围</h3>
-                  <p className="settings-panel-intro">
-                    选择一组 Animated Aurora Gradient Wave 背景。
-                  </p>
                   <div className="wall-list">
                     {wallpapers.map((wallpaper, index) => (
                       <button
@@ -955,43 +1070,74 @@ function Settings({
               </div>
             )}
             {activeSection === 'interface' && (
-              <section className="settings-panel-section">
-                <h3>界面显示</h3>
-                <p className="settings-panel-intro">控制首页中辅助信息与编辑操作的显示。</p>
-                <div className="settings-switches">
-                  <Switch
-                    label="编辑轨道"
-                    hint="公共网站入口由后台管理"
-                    checked={state.settings.editing}
-                    onClick={() =>
-                      patch({ settings: { ...state.settings, editing: !state.settings.editing } })
-                    }
-                  />
-                  <Switch
-                    label="显示秒数"
-                    hint="在时间旁显示秒钟"
-                    checked={state.settings.seconds}
-                    onClick={() =>
-                      patch({ settings: { ...state.settings, seconds: !state.settings.seconds } })
-                    }
-                  />
-                  <Switch
-                    label="显示问候"
-                    hint="根据时间更新首页问候"
-                    checked={state.settings.greeting}
-                    onClick={() =>
-                      patch({ settings: { ...state.settings, greeting: !state.settings.greeting } })
-                    }
-                  />
-                </div>
-              </section>
+              <div className="settings-panel-stack">
+                <section className="settings-panel-section">
+                  <h3>时间与日期</h3>
+                  <div className="settings-group-items">
+                    <Switch
+                      label="显示秒数"
+                      hint="在时间旁显示秒钟"
+                      checked={state.settings.seconds}
+                      onClick={() =>
+                        patch({ settings: { ...state.settings, seconds: !state.settings.seconds } })
+                      }
+                    />
+                    <Switch
+                      label="显示农历日期"
+                      hint="在公历日期后显示农历"
+                      checked={state.settings.lunarDate}
+                      onClick={() =>
+                        patch({
+                          settings: { ...state.settings, lunarDate: !state.settings.lunarDate },
+                        })
+                      }
+                    />
+                  </div>
+                </section>
+                <section className="settings-panel-section">
+                  <h3>其他</h3>
+                  <div className="settings-group-items">
+                    <Switch
+                      label="简洁模式"
+                      hint="仅显示时间、日期和搜索框"
+                      checked={state.settings.compactMode}
+                      onClick={() =>
+                        patch({
+                          settings: { ...state.settings, compactMode: !state.settings.compactMode },
+                        })
+                      }
+                    />
+                    <Switch
+                      label="显示问候"
+                      hint="根据时间更新首页问候"
+                      checked={state.settings.greeting}
+                      onClick={() =>
+                        patch({
+                          settings: { ...state.settings, greeting: !state.settings.greeting },
+                        })
+                      }
+                    />
+                    <Switch
+                      label="编辑轨道"
+                      hint="公共网站入口由后台管理"
+                      checked={state.settings.editing}
+                      onClick={() =>
+                        patch({ settings: { ...state.settings, editing: !state.settings.editing } })
+                      }
+                    />
+                  </div>
+                </section>
+              </div>
             )}
             {activeSection === 'reset' && (
               <section className="settings-panel-section">
-                <h3>恢复默认设置</h3>
-                <p className="settings-panel-intro">选择要恢复的内容，两个入口互不影响。</p>
+                <h3>设置数据</h3>
                 <div className="reset-options">
-                  <button type="button" onClick={() => requestReset('settings')}>
+                  <button
+                    className="reset-option-danger"
+                    type="button"
+                    onClick={() => requestReset('settings')}
+                  >
                     <strong>重置设置</strong>
                     <span>恢复搜索引擎、主题、壁纸和界面开关</span>
                   </button>
@@ -1017,18 +1163,12 @@ function Switch({
   onClick: () => void
 }) {
   return (
-    <div className="setting-row">
-      <span>
-        {label}
+    <button className="setting-row" role="switch" aria-checked={checked} onClick={onClick}>
+      <span className="setting-copy">
+        <strong>{label}</strong>
         <small>{hint}</small>
       </span>
-      <button
-        className="switch"
-        role="switch"
-        aria-checked={checked}
-        onClick={onClick}
-        aria-label={label}
-      />
-    </div>
+      <span className="switch" aria-hidden="true" />
+    </button>
   )
 }

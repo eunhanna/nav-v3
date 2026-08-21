@@ -15,7 +15,13 @@ export interface AppState {
   loggedIn: boolean
   theme: ThemeId
   wallpaper: number
-  settings: { seconds: boolean; greeting: boolean; editing: boolean }
+  settings: {
+    seconds: boolean
+    lunarDate: boolean
+    greeting: boolean
+    editing: boolean
+    compactMode: boolean
+  }
   categories: string[]
   sites: Site[]
 }
@@ -54,7 +60,13 @@ export const defaultState: AppState = {
   loggedIn: false,
   theme: 'system',
   wallpaper: 0,
-  settings: { seconds: false, greeting: true, editing: false },
+  settings: {
+    seconds: false,
+    lunarDate: false,
+    greeting: true,
+    editing: false,
+    compactMode: false,
+  },
   categories: ['常用', '工作', '创作', '生活'],
   // 公共入口由 API 获取，不能作为离线或首次加载的内置回退数据。
   sites: [],
